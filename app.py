@@ -389,14 +389,18 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
                     if arr.ndim == 2:
                         return Image.fromarray(arr).convert("RGB")
                     if arr.ndim == 3:
-                        # try converting BGR->RGB then fallback to raw
+                        if cv2 is not None:
+                            try:
+                                rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+                                return Image.fromarray(rgb).convert("RGB")
+                            except Exception:
+                                pass
+                        # fallback không cần cv2
                         try:
-                            rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+                            rgb = arr[..., ::-1]  # BGR -> RGB
                             return Image.fromarray(rgb).convert("RGB")
                         except Exception:
                             return Image.fromarray(arr).convert("RGB")
-                except Exception:
-                    pass
       
         # numpy array directly
         if isinstance(x, np.ndarray):
@@ -412,11 +416,19 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
             if arr.ndim == 2:
                 return Image.fromarray(arr).convert("RGB")
             if arr.ndim == 3:
-                try:
-                    rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-                    return Image.fromarray(rgb).convert("RGB")
-                except Exception:
-                    return Image.fromarray(arr).convert("RGB")
+              # Nếu cv2 có thì dùng, không thì đảo kênh BGR->RGB bằng numpy
+              if cv2 is not None:
+                  try:
+                      rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
+                      return Image.fromarray(rgb).convert("RGB")
+                  except Exception:
+                      pass
+              # fallback không cần cv2
+              try:
+                  rgb = arr[..., ::-1]  # BGR -> RGB
+                  return Image.fromarray(rgb).convert("RGB")
+              except Exception:
+                  return Image.fromarray(arr).convert("RGB")
 
     except Exception:
         return None
@@ -1414,4 +1426,5 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
