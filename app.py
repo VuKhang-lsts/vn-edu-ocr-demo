@@ -341,54 +341,77 @@ def _pick_first_key(d: dict, keys: List[str]) -> Optional[str]:
     return None
 
 def _decode_hf_image(x) -> Optional[Image.Image]:
-    # Robust decoder for HF datasets.Image variants and common encodings.
+    """Robust decoder for HF datasets.Image variants without OpenCV."""
     if x is None:
         return None
 
+    # Already a PIL Image
+    if isinstance(x, Image.Image):
+        return x.convert("RGB")
+
+    # Raw bytes
+    if isinstance(x, (bytes, bytearray)):
         try:
-        # Already a PIL Image
-        if isinstance(x, Image.Image):
-            return x.convert("RGB")
-
-        # Raw bytes
-        if isinstance(x, (bytes, bytearray)):
             return Image.open(io.BytesIO(bytes(x))).convert("RGB")
+        except Exception:
+            return None
 
-        # Base64-encoded string (possibly data URL)
-        if isinstance(x, str):
-            s = x.strip()
-            if s.startswith("data:") and "," in s:
-                s = s.split(",", 1)[1]
+    # Base64 string (possibly data URL)
+    if isinstance(x, str):
+        s = x.strip()
+        if s.startswith("data:") and "," in s:
+            s = s.split(",", 1)[1]
+        try:
             b = base64.b64decode(s)
             return Image.open(io.BytesIO(b)).convert("RGB")
+        except Exception:
+            return None
 
-        # dict-style from datasets (various keys)
-        if isinstance(x, dict):
-            if x.get("bytes"):
+    # dict-style from datasets (common keys: bytes/path/array)
+    if isinstance(x, dict):
+        if x.get("bytes") is not None:
+            try:
                 return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
-            if x.get("path"):
+            except Exception:
+                pass
+
+        if x.get("path"):
+            try:
                 return Image.open(x["path"]).convert("RGB")
-            if x.get("array") is not None:
+            except Exception:
+                pass
+
+        if x.get("array") is not None:
+            try:
                 arr = np.asarray(x["array"])
-                if arr.ndim == 2:
-                    return Image.fromarray(arr).convert("RGB")
-                if arr.ndim == 3:
-                    return Image.fromarray(arr).convert("RGB")
-
-        # numpy array directly  ✅ phải nằm TRONG try:
-        if isinstance(x, np.ndarray):
-            arr = x
-            if arr.dtype != np.uint8:
-                arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
-            if arr.ndim == 2:
+                # normalize dtype
+                if arr.dtype != np.uint8:
+                    try:
+                        arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
+                    except Exception:
+                        arr = arr.astype(np.uint8)
                 return Image.fromarray(arr).convert("RGB")
-            if arr.ndim == 3:
-                return Image.fromarray(arr).convert("RGB")
+            except Exception:
+                pass
 
-    except Exception:
         return None
 
+    # numpy array directly
+    if isinstance(x, np.ndarray):
+        arr = x
+        try:
+            if arr.dtype != np.uint8:
+                arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
+        except Exception:
+            arr = arr.astype(np.uint8)
+
+        try:
+            return Image.fromarray(arr).convert("RGB")
+        except Exception:
+            return None
+
     return None
+
 
 
 
@@ -1383,6 +1406,7 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
 
