@@ -37,7 +37,11 @@ from src.viz import draw_quads
 from src.export import lines_to_text, lines_to_json, lines_to_docx_bytes
 
 # HF datasets
-from datasets import load_dataset
+try:
+    from datasets import load_dataset
+except Exception:
+    load_dataset = None
+
 
 # =========================================================
 # Page config + CSS
@@ -1403,5 +1407,6 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
