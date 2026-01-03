@@ -398,7 +398,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
             return None
 
         # numpy array directly
-        if isinstance(x, np.ndarray):
+      if isinstance(x, np.ndarray):
             arr = x
             try:
                 if arr.dtype != np.uint8:
@@ -1408,6 +1408,7 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
 
