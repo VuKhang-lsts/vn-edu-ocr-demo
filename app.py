@@ -337,11 +337,11 @@ def _pick_first_key(d: dict, keys: List[str]) -> Optional[str]:
     return None
 
 def _decode_hf_image(x) -> Optional[Image.Image]:
-    """Robust decoder for HF datasets.Image and common encodings."""
+    """Robust decoder for HF datasets.Image variants and common encodings."""
     if x is None:
         return None
 
-    # 1) Already a PIL Image
+    # 1) Already PIL
     if isinstance(x, Image.Image):
         return x.convert("RGB")
 
@@ -352,7 +352,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
         except Exception:
             return None
 
-    # 3) Base64-encoded string (possibly a data URL)
+    # 3) Base64 string (possibly data URL)
     if isinstance(x, str):
         s = x.strip()
         if s.startswith("data:") and "," in s:
@@ -361,54 +361,55 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
             b = base64.b64decode(s)
             return Image.open(io.BytesIO(b)).convert("RGB")
         except Exception:
-            pass  # not base64 or failed
+            return None
 
-    # 4) dict-style from datasets (various keys)
+    # 4) dict-style from datasets
     if isinstance(x, dict):
         if x.get("bytes"):
             try:
                 return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
             except Exception:
                 pass
-
         if x.get("path"):
             try:
                 return Image.open(x["path"]).convert("RGB")
             except Exception:
                 pass
-
         if x.get("array") is not None:
             try:
                 arr = np.asarray(x["array"])
                 if arr.ndim == 2:
                     return Image.fromarray(arr).convert("RGB")
                 if arr.ndim == 3:
-                    # If it's BGR, this may swap wrongly for some datasets,
-                    # but it's safer than requiring cv2 on Streamlit Cloud.
-                    rgb = arr[..., ::-1]  # BGR->RGB fallback
-                    return Image.fromarray(rgb).convert("RGB")
+                    # if it's BGR, convert by reversing channels (safe fallback)
+                    if arr.shape[2] >= 3:
+                        arr = arr[:, :, :3][:, :, ::-1]
+                    return Image.fromarray(arr).convert("RGB")
             except Exception:
                 pass
+        return None
 
     # 5) numpy array directly
     if isinstance(x, np.ndarray):
-        arr = x
         try:
+            arr = x
             if arr.dtype != np.uint8:
-                if float(arr.max()) <= 1.0:
+                if arr.max() <= 1.0:
                     arr = (arr * 255).astype(np.uint8)
                 else:
                     arr = arr.astype(np.uint8)
-        except Exception:
-            arr = arr.astype(np.uint8)
 
-        if arr.ndim == 2:
-            return Image.fromarray(arr).convert("RGB")
-        if arr.ndim == 3:
-            rgb = arr[..., ::-1]  # BGR->RGB fallback
-            return Image.fromarray(rgb).convert("RGB")
+            if arr.ndim == 2:
+                return Image.fromarray(arr).convert("RGB")
+            if arr.ndim == 3:
+                if arr.shape[2] >= 3:
+                    arr = arr[:, :, :3][:, :, ::-1]
+                return Image.fromarray(arr).convert("RGB")
+        except Exception:
+            return None
 
     return None
+
 
 
 def canonical_domain(raw: Any) -> str:
@@ -1402,4 +1403,5 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
