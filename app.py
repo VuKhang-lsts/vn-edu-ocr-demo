@@ -345,7 +345,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
     if x is None:
         return None
 
-    try:
+        try:
         # Already a PIL Image
         if isinstance(x, Image.Image):
             return x.convert("RGB")
@@ -1383,6 +1383,7 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
 
