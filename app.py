@@ -28,7 +28,6 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 import base64
-import cv2
 
 # Project modules
 from src.text_utils import split_sentences_vi
@@ -1403,3 +1402,4 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
