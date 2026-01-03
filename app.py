@@ -375,7 +375,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
                 if arr.ndim == 3:
                     return Image.fromarray(arr).convert("RGB")
 
-        # numpy array directly
+        # numpy array directly  ✅ phải nằm TRONG try:
         if isinstance(x, np.ndarray):
             arr = x
             if arr.dtype != np.uint8:
@@ -389,6 +389,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
         return None
 
     return None
+
 
 
 def canonical_domain(raw: Any) -> str:
@@ -1382,6 +1383,7 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
 
