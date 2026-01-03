@@ -13,5 +13,8 @@ transformers>=4.40
 huggingface-hub>=0.34.0,<1.0
 sentencepiece
 jiwer
+datasets
+pandas
+matplotlib
 
 
