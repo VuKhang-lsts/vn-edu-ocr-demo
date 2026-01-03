@@ -345,74 +345,79 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
     if x is None:
         return None
 
-    # Already a PIL Image
-    if isinstance(x, Image.Image):
-        return x.convert("RGB")
+    try:
+        # Already a PIL Image
+        if isinstance(x, Image.Image):
+            return x.convert("RGB")
 
-    # Raw bytes
-    if isinstance(x, (bytes, bytearray)):
-        try:
-            return Image.open(io.BytesIO(bytes(x))).convert("RGB")
-        except Exception:
+        # Raw bytes
+        if isinstance(x, (bytes, bytearray)):
+            try:
+                return Image.open(io.BytesIO(bytes(x))).convert("RGB")
+            except Exception:
+                return None
+
+        # Base64 string (possibly data URL)
+        if isinstance(x, str):
+            s = x.strip()
+            if s.startswith("data:") and "," in s:
+                s = s.split(",", 1)[1]
+            try:
+                b = base64.b64decode(s)
+                return Image.open(io.BytesIO(b)).convert("RGB")
+            except Exception:
+                return None
+
+        # dict-style from datasets (common keys: bytes/path/array)
+        if isinstance(x, dict):
+            # bytes field
+            if x.get("bytes") is not None:
+                try:
+                    return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
+                except Exception:
+                    pass
+
+            # path field
+            if x.get("path"):
+                try:
+                    return Image.open(x["path"]).convert("RGB")
+                except Exception:
+                    pass
+
+            # array field (numpy-like)
+            if x.get("array") is not None:
+                try:
+                    arr = np.asarray(x["array"])
+                    # normalize dtype
+                    if arr.dtype != np.uint8:
+                        try:
+                            arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
+                        except Exception:
+                            arr = arr.astype(np.uint8)
+                    return Image.fromarray(arr).convert("RGB")
+                except Exception:
+                    pass
+
             return None
 
-    # Base64 string (possibly data URL)
-    if isinstance(x, str):
-        s = x.strip()
-        if s.startswith("data:") and "," in s:
-            s = s.split(",", 1)[1]
-        try:
-            b = base64.b64decode(s)
-            return Image.open(io.BytesIO(b)).convert("RGB")
-        except Exception:
-            return None
-
-    # dict-style from datasets (common keys: bytes/path/array)
-    if isinstance(x, dict):
-        if x.get("bytes") is not None:
+        # numpy array directly
+        if isinstance(x, np.ndarray):
+            arr = x
             try:
-                return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
-            except Exception:
-                pass
-
-        if x.get("path"):
-            try:
-                return Image.open(x["path"]).convert("RGB")
-            except Exception:
-                pass
-
-        if x.get("array") is not None:
-            try:
-                arr = np.asarray(x["array"])
-                # normalize dtype
                 if arr.dtype != np.uint8:
-                    try:
-                        arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
-                    except Exception:
-                        arr = arr.astype(np.uint8)
+                    arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
+            except Exception:
+                arr = arr.astype(np.uint8)
+
+            try:
                 return Image.fromarray(arr).convert("RGB")
             except Exception:
-                pass
+                return None
 
         return None
-
-    # numpy array directly
-    if isinstance(x, np.ndarray):
-        arr = x
-        try:
-            if arr.dtype != np.uint8:
-                arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
-        except Exception:
-            arr = arr.astype(np.uint8)
-
-        try:
-            return Image.fromarray(arr).convert("RGB")
-        except Exception:
-            return None
-
-    return None
-
-
+    except Exception:
+        # fallback catch-all: ensure function never raises during decode attempts
+        return None
 
 
 def canonical_domain(raw: Any) -> str:
@@ -1406,6 +1411,7 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
 
