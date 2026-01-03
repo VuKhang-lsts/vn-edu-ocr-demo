@@ -28,7 +28,10 @@ import numpy as np
 import streamlit as st
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 import base64
-import cv2
+try:
+    import cv2
+except Exception:
+    cv2 = None
 
 # Project modules
 from src.text_utils import split_sentences_vi
@@ -394,7 +397,7 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
                             return Image.fromarray(arr).convert("RGB")
                 except Exception:
                     pass
-
+      
         # numpy array directly
         if isinstance(x, np.ndarray):
             arr = x
@@ -1411,3 +1414,4 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
