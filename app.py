@@ -341,7 +341,7 @@ def _pick_first_key(d: dict, keys: List[str]) -> Optional[str]:
     return None
 
 def _decode_hf_image(x) -> Optional[Image.Image]:
-    # Robust decoder for HF `datasets.Image` variants and common encodings.
+    # Robust decoder for HF datasets.Image variants and common encodings.
     if x is None:
         return None
 
@@ -352,88 +352,44 @@ def _decode_hf_image(x) -> Optional[Image.Image]:
 
         # Raw bytes
         if isinstance(x, (bytes, bytearray)):
-            try:
-                return Image.open(io.BytesIO(bytes(x))).convert("RGB")
-            except Exception:
-                return None
+            return Image.open(io.BytesIO(bytes(x))).convert("RGB")
 
         # Base64-encoded string (possibly data URL)
         if isinstance(x, str):
             s = x.strip()
             if s.startswith("data:") and "," in s:
                 s = s.split(",", 1)[1]
-            try:
-                b = base64.b64decode(s)
-                return Image.open(io.BytesIO(b)).convert("RGB")
-            except Exception:
-                # not base64 or failed to decode
-                pass
+            b = base64.b64decode(s)
+            return Image.open(io.BytesIO(b)).convert("RGB")
 
         # dict-style from datasets (various keys)
         if isinstance(x, dict):
-            # common: {'bytes': ..., 'path': ...}
             if x.get("bytes"):
-                try:
-                    return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
-                except Exception:
-                    pass
+                return Image.open(io.BytesIO(x["bytes"])).convert("RGB")
             if x.get("path"):
-                try:
-                    return Image.open(x["path"]).convert("RGB")
-                except Exception:
-                    pass
-            # some datasets expose raw arrays
+                return Image.open(x["path"]).convert("RGB")
             if x.get("array") is not None:
-                try:
-                    arr = np.asarray(x["array"])
-                    if arr.ndim == 2:
-                        return Image.fromarray(arr).convert("RGB")
-                    if arr.ndim == 3:
-                        if cv2 is not None:
-                            try:
-                                rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-                                return Image.fromarray(rgb).convert("RGB")
-                            except Exception:
-                                pass
-                        # fallback không cần cv2
-                        try:
-                            rgb = arr[..., ::-1]  # BGR -> RGB
-                            return Image.fromarray(rgb).convert("RGB")
-                        except Exception:
-                            return Image.fromarray(arr).convert("RGB")
-      
+                arr = np.asarray(x["array"])
+                if arr.ndim == 2:
+                    return Image.fromarray(arr).convert("RGB")
+                if arr.ndim == 3:
+                    return Image.fromarray(arr).convert("RGB")
+
         # numpy array directly
         if isinstance(x, np.ndarray):
             arr = x
-            try:
-                if arr.dtype != np.uint8:
-                    if arr.max() <= 1.0:
-                        arr = (arr * 255).astype(np.uint8)
-                    else:
-                        arr = arr.astype(np.uint8)
-            except Exception:
-                arr = arr.astype(np.uint8)
+            if arr.dtype != np.uint8:
+                arr = (arr * 255).astype(np.uint8) if arr.max() <= 1.0 else arr.astype(np.uint8)
             if arr.ndim == 2:
                 return Image.fromarray(arr).convert("RGB")
             if arr.ndim == 3:
-              # Nếu cv2 có thì dùng, không thì đảo kênh BGR->RGB bằng numpy
-              if cv2 is not None:
-                  try:
-                      rgb = cv2.cvtColor(arr, cv2.COLOR_BGR2RGB)
-                      return Image.fromarray(rgb).convert("RGB")
-                  except Exception:
-                      pass
-              # fallback không cần cv2
-              try:
-                  rgb = arr[..., ::-1]  # BGR -> RGB
-                  return Image.fromarray(rgb).convert("RGB")
-              except Exception:
-                  return Image.fromarray(arr).convert("RGB")
+                return Image.fromarray(arr).convert("RGB")
 
     except Exception:
         return None
 
     return None
+
 
 def canonical_domain(raw: Any) -> str:
     s = str(raw or "").strip()
@@ -1426,5 +1382,6 @@ with tab_help:
 - Sau đó chạy 0 (toàn bộ) để lấy kết quả cuối.
         """
     )
+
 
 
